@@ -1,0 +1,109 @@
+Steps
+    ------------------------------------------------------
+    step: AWS-setup
+        ##################################################
+        AWS key - generovaný v aws 
+        AWS security groups - jenkins ports
+            jenkins ports 
+                22 -myip
+                8080 - 0.0.0.0/0
+                8080 - ::/0
+                8080 - sonar sq
+            sonar ports 
+                22 -myip
+                80 -jenkins-sg
+                80 -myip (pre nexus service)
+             
+            nexus ports
+                22 -myip
+                8081 - myip
+                8081 - jenkins-sg 
+        ###################################################
+        AWS EC2 
+            Jenkins 
+                ubuntu.20.04
+                t2.medium
+                gp2 8gb
+                jenkins-sg
+                userdata
+                    jenkins-setup.sh 
+
+            Sonar
+                ubuntu.20.04
+                t2.medium
+                gp2 8gb
+                sonar-sg
+                userdata
+                    sonar-setup.sh
+
+            Nexus
+                amazon linux 2 (ec2-user)
+                t2.medium 
+                gp2 8gb
+                nexus-sg
+                userdata
+                    nexus-setup.sh
+    -------------------------------------------------------------    
+    step: Post install setup
+        ########################################################
+        Jenkins plugins : 
+            Maven integration, Github integration, Nexus artifact uploader, SonarQube scanner, Slack Notification, Build timestamp, Docker pipeline, CloudBees Docker Build and Publish, Amazon ECR, Pipeline: AWS Steps,
+            install openjdk-8-jdk (OracleJDK) path: /usr/lib/jvm/java-1.8.0-openjdk-amd64 for manual installation in jenkins 
+            configure maven (MAVEN3)
+            Add nexus credentials for jenkins user: username and password, id nexuslogin
+            create ssh-key for git hub and jenkins credentials
+            login as jenkins user and run git ls-remote -h -- git@github.com(your ssh git url ) HEAD for storing identity key
+            add webhook for git hub (ip/github-webhook/)
+            configure sonar (sonarscanner) (sonarserver) private ip, no need for adding port bc of nginx running on port 80
+            configure buld timestamp for artifactId yy-MM-dd_HHmm 
+            create cred for aws user  in jenkins
+            ssh to jenkins as sudo run: apt update && apt install awscli -y
+            install docker manuali 
+            add jenkins user to docker group : usermod -aG docker jenkins
+            restart jenkins : systemctl restart jenkins
+
+
+
+        Nexus repositories : 
+               create repositories (maven2 hosted "vprofile-release" ), (maven2 proxy "vpro-maven-central" (https://repo1.maven.org/maven2/)), (maven2 hosted "vprofile-snapshot" (snapshot)), (maven2 group "vpro-maven-group" (all created repo)) 
+
+        SonarQube 
+            (username:admin password:admin)
+            generate token for jenkins save it as secret text 
+            configure webhook for jenkins (project)
+
+        Slack 
+            configure Slack and add token to jenkins     7eXzLkyDbP74MVF8iqgQykTZ
+
+        Aws 
+            create ECR 
+            create ECS -use fargate and monitoring
+                create task-definition
+                    name : vproapp
+                    port : 8080
+                    cpu : 1
+                    memory : 2gb
+                create service 
+                     conf op : launch type
+                     deployment conf: specify the revision maually, 1 task 
+                     networking 
+                        vproappstagesg 
+                            8080 anywhere
+                    loadbalancing 
+                        vproappstageelb
+                            8080:8080
+                            port 80
+                            target group vproappstagetg
+                            healtchek /login
+                            healtchek 30
+            ubdate in EC2 target groups 
+                healt cheks
+                    advance 
+                        override port 
+                            8080
+
+
+
+                    
+    ---------------------------------------------------------------
+        
